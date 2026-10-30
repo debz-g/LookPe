@@ -1,0 +1,6 @@
+<resources>
+    <!-- ObsidianNeutrals.Dark background and ObsidianAccent.Emerald, for the window and launcher icon (outside Compose). -->
+    <color name="window_background">#131316</color>
+    <color name="ic_launcher_background">#131316</color>
+    <color name="ob_accent">#21D07A</color>
+</resources>

@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">LookPe</string>
+    <string name="widget_label">Today\'s collection</string>
+    <string name="widget_description">Today\'s PhonePe Business payments and total</string>
+</resources>

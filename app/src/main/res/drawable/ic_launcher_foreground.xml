@@ -1,0 +1,14 @@
+<!-- Rupee symbol on the adaptive icon's safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="30"
+        android:translateY="30">
+        <path
+            android:fillColor="@color/ob_accent"
+            android:pathData="M10,6h28v4.5h-8.6c1.5,1.6 2.5,3.6 2.9,5.9h5.7v4.5h-5.7c-0.9,6 -5.6,10.1 -12.4,10.6L30.8,44h-6.2L13.4,31.6v-3.9h4.4c4.3,0 7.4,-2.4 8.2,-6.8H10v-4.5h15.6c-0.9,-3.4 -3.9,-5.9 -8.2,-5.9H10V6z" />
+    </group>
+</vector>

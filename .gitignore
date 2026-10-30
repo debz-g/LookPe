@@ -1,0 +1,19 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+/build
+/app/build
+/captures
+.kotlin
+
+# The backup encryption key: never commit it (anyone with it can read .lookpe backups).
+backup.key
+
+# Build outputs and personal data
+*.apk
+*.aab
+*.lookpe
+*.jks
+*.keystore

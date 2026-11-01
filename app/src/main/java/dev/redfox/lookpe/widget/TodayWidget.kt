@@ -54,6 +54,7 @@ import dev.redfox.lookpe.formatTime
 import dev.redfox.lookpe.reveal.RevealActivity
 import dev.redfox.lookpe.reveal.RevealState
 import dev.redfox.lookpe.service.PhonePeListenerService
+import dev.redfox.lookpe.ui.PaymentDialogActivity
 import dev.redfox.lookpe.ui.LookPeColors
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -282,8 +283,12 @@ private fun NotListening() {
 
 @Composable
 private fun PaymentRow(p: Payment, visible: Boolean, showTime: Boolean) {
+    // Widgets can't show a dialog: this opens PaymentDialogActivity, which draws the details over the home screen.
+    val open = actionStartActivity<PaymentDialogActivity>(
+        actionParametersOf(ActionParameters.Key<Long>(PaymentDialogActivity.EXTRA_PAYMENT_ID) to p.id)
+    )
     Row(
-        modifier = GlanceModifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 9.dp),
+        modifier = GlanceModifier.fillMaxWidth().clickable(open).padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (showTime) {

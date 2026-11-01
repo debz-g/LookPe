@@ -64,7 +64,7 @@ PhonePeListenerService ─► PaymentParser ─► Repository (Room) ─► UI s
 - `data/`: Room DB `lookpe.db`, **version 2** (`payment`, `skipped`). `Repository` is a plain singleton (no DI; the app is small).
   - Payments are de-duplicated by unique `dedupeKey`: the txn ID, or `notificationKey|postTime` when there is none. When there's no txn ID, the same amount from the same payer within 60 s is also treated as a duplicate.
   - `raw` stores `"$title\n$text"`. It's what `repairAmounts()` and `reparseSkipped()` re-read.
-- `widget/TodayWidget`: Glance with `SizeMode.Exact`. Three layouts by height: compact (<110dp: total + eye), summary (<190dp), full (list). `MidnightRefresh` re-arms on boot and also re-arms `DailySummary`.
+- `widget/TodayWidget`: Glance with `SizeMode.Exact`. Three layouts by height: compact (<110dp: total + eye), summary (<190dp), full (list). `MidnightRefresh` re-arms on boot and also re-arms `DailySummary`. In `full`, tapping a payment row starts `ui/PaymentDialogActivity`: a transparent activity that draws its own scrim and card, because a Glance widget can't host a dialog. It reuses `PaymentDetailsBody` (shared with the app's sheet) and keeps amounts masked while the lock is on.
 - `reveal/`: hide/show state (`RevealState`: prefs + StateFlows `revealed`, `lockEnabled`), the biometric prompt, `RevealActivity`, and an exact-alarm `HideReceiver`.
 - `backup/`: the `.lookpe` format (`BackupCodec`), `BackupKey`, and `Backups` (automatic WorkManager backup, export, merge-import).
 - `notify/`: channels (`alerts`, `summary`) and `DailySummary` (exact alarm at the chosen hour, 9 PM by default).

@@ -40,6 +40,10 @@ interface PaymentDao {
     @Query("SELECT * FROM payment ORDER BY receivedAt")
     suspend fun all(): List<Payment>
 
+    /** One payment, for the widget's detail dialog. */
+    @Query("SELECT * FROM payment WHERE id = :id")
+    suspend fun byId(id: Long): Payment?
+
     @Query("UPDATE payment SET amountPaise = :amountPaise, payer = :payer WHERE id = :id")
     suspend fun correct(id: Long, amountPaise: Long, payer: String?)
 

@@ -100,6 +100,8 @@ class Repository private constructor(context: Context) {
 
     suspend fun paymentsOn(day: LocalDate) = dayRange(day).let { (from, to) -> dao.between(from, to) }
 
+    suspend fun payment(id: Long) = dao.byId(id)
+
     private fun dayRange(day: LocalDate): Pair<Long, Long> {
         val zone = ZoneId.systemDefault()
         return day.atStartOfDay(zone).toInstant().toEpochMilli() to

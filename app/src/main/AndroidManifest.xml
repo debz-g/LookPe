@@ -40,6 +40,15 @@
             android:taskAffinity=""
             android:theme="@style/Theme.LookPe.Transparent" />
 
+        <!-- The widget's payment dialog: a transparent window that draws its own scrim and card. -->
+        <activity
+            android:name=".ui.PaymentDialogActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.LookPe.Transparent" />
+
         <service
             android:name=".service.PhonePeListenerService"
             android:exported="true"

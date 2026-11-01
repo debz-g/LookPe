@@ -20,8 +20,7 @@ The repo (github.com/debz-g/LookPe) is **public** and GPL-3.0. See "Secrets and 
 ./gradlew check            # lint + all unit tests + verifyDesignRules: run before every commit
 ./gradlew testDebugUnitTest --tests "dev.redfox.lookpe.PaymentParserTest"   # one test class
 ./gradlew assembleDebug    # debug APK (also accepts shell-posted test notifications)
-./gradlew assembleRelease  # R8-shrunk APK signed with the local debug key: what gets sideloaded
-cp app/build/outputs/apk/release/app-release.apk LookPe.apk  # the hand-out copy (git-ignored)
+./gradlew :app:releaseApk -PversionCode=6 -PversionName=1.2.3  # hand-out APK: assembleRelease + copy to LookPe.apk
 ```
 
 Toolchain: AGP 9.2.1 with built-in Kotlin (no `kotlin-android` plugin), Kotlin 2.2.10, KSP,
@@ -31,7 +30,25 @@ compileSdk 36.1, minSdk 31, targetSdk 36, JDK 17+. Add dependencies through
 ### Shipping an update the phone can install over the old one
 
 - Keep `applicationId` as it is, and build on the **same machine** (same `~/.android/debug.keystore`).
-- **Bump `versionCode`** (and `versionName`) in `app/build.gradle.kts` for every APK handed out. A same-or-lower code fails with `INSTALL_FAILED_VERSION_DOWNGRADE`.
+- The version is passed per build; `app/build.gradle.kts` only holds the fallback (`5` / `1.2.2`). A
+  same-or-lower `versionCode` fails with `INSTALL_FAILED_VERSION_DOWNGRADE`.
+
+**Never build a release APK in-session.** When asked to "generate a release APK" / "bump the version and
+build", reply with the command below instead, changing only the `-P` values. Nothing in
+`app/build.gradle.kts` needs editing.
+
+```bash
+./gradlew :app:releaseApk -PversionCode=6 -PversionName=1.2.3
+```
+
+The `releaseApk` task runs `assembleRelease` and copies the result to `LookPe.apk` in the repo root
+(git-ignored); it fails if `assembleRelease` produced no APK. Both flags are optional, so plain
+`assembleDebug` and IDE builds still work, but **always pass both when handing out** — otherwise the APK
+gets the stale fallback version.
+
+- `versionCode` must go **up** relative to what the phone already has. The last handed-out build is `5`,
+  so the next one is `6` or higher; `-PversionCode=2` would be rejected by the phone.
+- Then `adb install -r LookPe.apk` over the old build once, to exercise the Room migration + launch repair.
 
 ## Architecture
 

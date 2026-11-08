@@ -15,7 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.res.painterResource
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -38,6 +41,7 @@ import dev.redfox.lookpe.reveal.RevealState
 import dev.redfox.obsidian.components.HeaderIconButton
 import dev.redfox.obsidian.components.ObCard
 import dev.redfox.obsidian.components.ObDivider
+import dev.redfox.obsidian.components.ObListRow
 import dev.redfox.obsidian.components.DetailPage
 import dev.redfox.obsidian.components.SectionLabel
 import dev.redfox.obsidian.effects.glassSource
@@ -60,7 +64,7 @@ private val shortDay = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
 
 /** Month calendar with each day's total, the month total, and week by week. Tapping a day opens it. */
 @Composable
-fun HistoryScreen(onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit) {
+fun HistoryScreen(onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit, onOpenStatement: () -> Unit) {
     val context = LocalContext.current
     val repo = remember { Repository.get(context) }
     val thisMonth = YearMonth.now()
@@ -139,6 +143,25 @@ fun HistoryScreen(onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit) {
             item {
                 ObCard(Modifier.fillMaxWidth().revealOnEnter(2), contentPadding = PaddingValues(ObSpacing.M)) {
                     MonthGrid(month, perDay, visible, onOpenDay)
+                }
+            }
+            item {
+                ObCard(Modifier.fillMaxWidth().revealOnEnter(3), contentPadding = PaddingValues(ObSpacing.L)) {
+                    ObListRow(
+                        title = "Download statement",
+                        subtitle = "PDF of all payments, saved in Downloads",
+                        icon = R.drawable.ic_download,
+                        titleStyleLarge = true,
+                        onClick = onOpenStatement,
+                        trailing = {
+                            Icon(
+                                painterResource(R.drawable.ic_chevron_right),
+                                contentDescription = null,
+                                tint = colors.textTertiary,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        },
+                    )
                 }
             }
             item { SectionLabel("Week by week", Modifier.padding(top = ObSpacing.S).revealOnEnter(3)) }

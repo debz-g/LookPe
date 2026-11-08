@@ -10,13 +10,21 @@ object Money {
     fun format(paise: Long): String {
         val sign = if (paise < 0) "-" else ""
         val abs = kotlin.math.abs(paise)
-        val rupees = (abs / 100).toString()
-        val grouped = if (rupees.length <= 3) rupees else {
-            val head = rupees.dropLast(3)
-            head.reversed().chunked(2).joinToString(",").reversed() + "," + rupees.takeLast(3)
-        }
         val fraction = abs % 100
-        return sign + "₹" + grouped + if (fraction == 0L) "" else ".%02d".format(Locale.US, fraction)
+        return sign + "₹" + group(abs / 100) + if (fraction == 0L) "" else ".%02d".format(Locale.US, fraction)
+    }
+
+    /** 1,21,050.00: no ₹ sign and always two decimals, for the columns of a statement. */
+    fun plain(paise: Long): String {
+        val sign = if (paise < 0) "-" else ""
+        val abs = kotlin.math.abs(paise)
+        return sign + group(abs / 100) + ".%02d".format(Locale.US, abs % 100)
+    }
+
+    private fun group(rupees: Long): String {
+        val digits = rupees.toString()
+        if (digits.length <= 3) return digits
+        return digits.dropLast(3).reversed().chunked(2).joinToString(",").reversed() + "," + digits.takeLast(3)
     }
 
     /** Short form for tight spaces like calendar cells: ₹850, ₹4.5k, ₹45k, ₹1.2L. */

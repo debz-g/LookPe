@@ -34,6 +34,7 @@ import dev.redfox.lookpe.ui.HistoryScreen
 import dev.redfox.lookpe.ui.SearchScreen
 import dev.redfox.lookpe.ui.SettingsScreen
 import dev.redfox.lookpe.ui.SkippedScreen
+import dev.redfox.lookpe.ui.StatementScreen
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.saveable.listSaver
 import java.time.LocalDate
@@ -113,8 +114,10 @@ class MainActivity : FragmentActivity() {
                     Screen.History -> HistoryScreen(
                         onBack = back,
                         onOpenDay = { dayEpoch = it.toEpochDay(); back() },
+                        onOpenStatement = { push(Screen.Statement) },
                     )
                     Screen.Skipped -> SkippedScreen(onBack = back)
+                    Screen.Statement -> StatementScreen(onBack = back, requireUnlock = ::requireUnlock)
                 }
             }
         }
@@ -124,6 +127,21 @@ class MainActivity : FragmentActivity() {
         askForBiometric(
             onSuccess = { lifecycleScope.launch { RevealState.reveal(applicationContext) } },
             onFail = {},
+        )
+    }
+
+    /** A statement lists every amount, so with Hide amounts on it needs the same check as showing them. */
+    private fun requireUnlock(onUnlocked: () -> Unit) {
+        RevealState.sync(applicationContext)
+        if (!RevealState.lockEnabled.value || RevealState.revealed.value) {
+            onUnlocked()
+            return
+        }
+        askForBiometric(
+            onSuccess = onUnlocked,
+            onFail = {},
+            title = "Download statement",
+            subtitle = "The PDF lists every payment amount",
         )
     }
 
@@ -138,7 +156,7 @@ class MainActivity : FragmentActivity() {
     }
 }
 
-private enum class Screen { Home, Settings, Search, History, Skipped }
+private enum class Screen { Home, Settings, Search, History, Skipped, Statement }
 
 private val ScreenStackSaver = listSaver<List<Screen>, String>(
     save = { stack -> stack.map { it.name } },

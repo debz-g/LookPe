@@ -25,7 +25,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,7 +34,6 @@ import dev.redfox.lookpe.Money
 import dev.redfox.lookpe.R
 import dev.redfox.lookpe.reveal.RevealState
 import dev.redfox.lookpe.statement.Statement
-import dev.redfox.lookpe.statement.StatementPeriod
 import dev.redfox.lookpe.statement.Statements
 import dev.redfox.obsidian.components.ActionPillButton
 import dev.redfox.obsidian.components.DetailPage
@@ -44,8 +42,6 @@ import dev.redfox.obsidian.components.ObSnackbarHost
 import dev.redfox.obsidian.components.ObSnackbarState
 import dev.redfox.obsidian.components.PillButton
 import dev.redfox.obsidian.components.SectionLabel
-import dev.redfox.obsidian.components.SegmentOption
-import dev.redfox.obsidian.components.SegmentedPill
 import dev.redfox.obsidian.effects.glassSource
 import dev.redfox.obsidian.motion.revealOnEnter
 import dev.redfox.obsidian.theme.ObSpacing
@@ -70,18 +66,19 @@ fun StatementScreen(onBack: () -> Unit, requireUnlock: (onUnlocked: () -> Unit) 
     val type = ObsidianTheme.typography
     val snackbars = remember { ObSnackbarState() }
 
-    var periodIndex by rememberSaveable { mutableStateOf(0) }
-    val period = StatementPeriod.entries[periodIndex]
+    val periodState = rememberPeriodState()
+    val period = periodState.period
+    val custom = periodState.custom
     var saving by remember { mutableStateOf(false) }
-    var savedUri by remember(period) { mutableStateOf<Uri?>(null) }
+    var savedUri by remember(period, custom) { mutableStateOf<Uri?>(null) }
 
     val revealed by RevealState.revealed.collectAsState()
     val lockEnabled by RevealState.lockEnabled.collectAsState()
     val visible = !lockEnabled || revealed
 
-    val statement: Statement? by produceState<Statement?>(null, period) {
+    val statement: Statement? by produceState<Statement?>(null, period, custom) {
         value = null
-        value = Statements.build(context, period)
+        value = Statements.build(context, period, custom)
     }
 
     fun download() {
@@ -147,11 +144,7 @@ fun StatementScreen(onBack: () -> Unit, requireUnlock: (onUnlocked: () -> Unit) 
                             color = colors.textSecondary,
                         )
                         Spacer(Modifier.height(ObSpacing.M))
-                        SegmentedPill(
-                            options = StatementPeriod.entries.map { SegmentOption(it.label) },
-                            selectedIndex = periodIndex,
-                            onSelect = { periodIndex = it },
-                        )
+                        PeriodPicker(periodState)
                     }
                 }
                 item { SectionLabel("This statement", Modifier.padding(top = ObSpacing.S).revealOnEnter(1)) }

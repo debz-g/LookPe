@@ -5,17 +5,30 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
-/** How far back a statement goes. */
+/** How far back a statement goes. Financial years run April to March, as in India. */
 enum class StatementPeriod(val label: String) {
-    ThisMonth("Month"), LastMonth("Last"), Last3Months("3 months"), AllTime("All");
+    ThisMonth("This month"), LastMonth("Last month"), Last3Months("3 months"),
+    ThisFY("This FY"), LastFY("Last FY"), AllTime("All time"), Custom("Custom");
 
-    /** First and last day covered. [firstPayment] only matters for [AllTime]. */
-    fun range(today: LocalDate, firstPayment: LocalDate?): Pair<LocalDate, LocalDate> = when (this) {
+    /**
+     * First and last day covered. [firstPayment] only matters for [AllTime]; [custom] is what the
+     * user picked for [Custom] (swapped if given the wrong way round).
+     */
+    fun range(
+        today: LocalDate,
+        firstPayment: LocalDate?,
+        custom: Pair<LocalDate, LocalDate>? = null,
+    ): Pair<LocalDate, LocalDate> = when (this) {
         ThisMonth -> today.withDayOfMonth(1) to today
         LastMonth -> today.minusMonths(1).let { it.withDayOfMonth(1) to it.withDayOfMonth(it.lengthOfMonth()) }
         Last3Months -> today.minusMonths(2).withDayOfMonth(1) to today
+        ThisFY -> fyStart(today) to today
+        LastFY -> fyStart(today).let { it.minusYears(1) to it.minusDays(1) }
         AllTime -> (firstPayment ?: today) to today
+        Custom -> custom?.let { (a, b) -> if (a <= b) a to b else b to a } ?: (today.withDayOfMonth(1) to today)
     }
+
+    private fun fyStart(day: LocalDate) = LocalDate.of(if (day.monthValue >= 4) day.year else day.year - 1, 4, 1)
 }
 
 /** One line of the statement, oldest first like a bank's. */

@@ -15,9 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,14 +26,11 @@ import dev.redfox.lookpe.Money
 import dev.redfox.lookpe.R
 import dev.redfox.lookpe.reveal.RevealState
 import dev.redfox.lookpe.statement.Statement
-import dev.redfox.lookpe.statement.StatementPeriod
 import dev.redfox.lookpe.statement.Statements
 import dev.redfox.obsidian.components.DetailPage
 import dev.redfox.obsidian.components.EmptyState
 import dev.redfox.obsidian.components.ObCard
 import dev.redfox.obsidian.components.ObDivider
-import dev.redfox.obsidian.components.SegmentOption
-import dev.redfox.obsidian.components.SegmentedPill
 import dev.redfox.obsidian.effects.glassSource
 import dev.redfox.obsidian.motion.revealOnEnter
 import dev.redfox.obsidian.theme.ObSpacing
@@ -54,16 +49,17 @@ fun CustomersScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val colors = ObsidianTheme.colors
     val type = ObsidianTheme.typography
-    var periodIndex by rememberSaveable { mutableIntStateOf(0) }
-    val period = StatementPeriod.entries[periodIndex]
+    val periodState = rememberPeriodState()
+    val period = periodState.period
+    val custom = periodState.custom
 
     val revealed by RevealState.revealed.collectAsState()
     val lockEnabled by RevealState.lockEnabled.collectAsState()
     val visible = !lockEnabled || revealed
 
-    val statement: Statement? by produceState<Statement?>(null, period) {
+    val statement: Statement? by produceState<Statement?>(null, period, custom) {
         value = null
-        value = Statements.build(context, period)
+        value = Statements.build(context, period, custom)
     }
 
     DetailPage(title = "Top customers", onBack = onBack) { padding ->
@@ -78,12 +74,7 @@ fun CustomersScreen(onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(ObSpacing.M),
         ) {
             item {
-                SegmentedPill(
-                    options = StatementPeriod.entries.map { SegmentOption(it.label) },
-                    selectedIndex = periodIndex,
-                    onSelect = { periodIndex = it },
-                    modifier = Modifier.revealOnEnter(0),
-                )
+                PeriodPicker(periodState, Modifier.revealOnEnter(0))
             }
             val st = statement
             if (st != null && st.customers.isEmpty()) {

@@ -61,6 +61,30 @@ class StatementTest {
     }
 
     @Test
+    fun financialYear_runsAprilToMarch() {
+        val mid = LocalDate.of(2026, 11, 8)
+        assertEquals(LocalDate.of(2026, 4, 1) to mid, StatementPeriod.ThisFY.range(mid, null))
+        assertEquals(LocalDate.of(2025, 4, 1) to LocalDate.of(2026, 3, 31), StatementPeriod.LastFY.range(mid, null))
+        // January to March still belongs to the year that began the previous April.
+        val feb = LocalDate.of(2027, 2, 10)
+        assertEquals(LocalDate.of(2026, 4, 1) to feb, StatementPeriod.ThisFY.range(feb, null))
+        assertEquals(LocalDate.of(2025, 4, 1) to LocalDate.of(2026, 3, 31), StatementPeriod.LastFY.range(feb, null))
+        // 1 April itself starts the new year.
+        val first = LocalDate.of(2026, 4, 1)
+        assertEquals(first to first, StatementPeriod.ThisFY.range(first, null))
+    }
+
+    @Test
+    fun customRange_isUsed_swappedIfBackwards_andDefaultsToThisMonth() {
+        val today = LocalDate.of(2026, 11, 8)
+        val a = LocalDate.of(2026, 9, 10)
+        val b = LocalDate.of(2026, 10, 20)
+        assertEquals(a to b, StatementPeriod.Custom.range(today, null, a to b))
+        assertEquals(a to b, StatementPeriod.Custom.range(today, null, b to a))
+        assertEquals(LocalDate.of(2026, 11, 1) to today, StatementPeriod.Custom.range(today, null, null))
+    }
+
+    @Test
     fun customers_areRankedByTotal_matchingNamesLoosely_andSkippingUnnamed() {
         val ps = listOf(
             pay(1, at("2026-11-01", "10:00"), 10000, "ASHA ROY"),

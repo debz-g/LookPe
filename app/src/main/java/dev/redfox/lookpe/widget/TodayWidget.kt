@@ -6,6 +6,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -54,6 +55,7 @@ import dev.redfox.lookpe.formatTime
 import dev.redfox.lookpe.reveal.RevealActivity
 import dev.redfox.lookpe.reveal.RevealState
 import dev.redfox.lookpe.service.PhonePeListenerService
+import dev.redfox.lookpe.share.ShareTotalActivity
 import dev.redfox.lookpe.ui.PaymentDialogActivity
 import dev.redfox.lookpe.ui.LookPeColors
 import java.time.LocalDate
@@ -140,7 +142,7 @@ private object Ob {
 @Composable
 internal fun Content(state: WidgetState) {
     val size = LocalSize.current
-    val pad = if (size.height < 110.dp || size.width < 160.dp) 12.dp else 18.dp
+    val pad = widgetPadding(size)
 
     Box(
         modifier = GlanceModifier
@@ -162,14 +164,20 @@ internal fun Content(state: WidgetState) {
 private fun Compact(state: WidgetState) {
     val size = LocalSize.current
     Row(modifier = GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+        val fontSize = amountSize(size.width, compact = true)
+        val button = if (size.height < 70.dp) 36.dp else 44.dp
         Total(
             state,
-            fontSize = amountSize(size.width, compact = true),
+            fontSize = fontSize,
             modifier = GlanceModifier.defaultWeight().clickable(actionStartActivity<MainActivity>()),
         )
+        if (roomForShare(state, size, fontSize, button)) {
+            Spacer(GlanceModifier.width(8.dp))
+            ShareButton(button)
+        }
         if (state.lockEnabled) {
             Spacer(GlanceModifier.width(8.dp))
-            EyeButton(state.visible, size = if (size.height < 70.dp) 36.dp else 44.dp)
+            EyeButton(state.visible, size = button)
         }
     }
 }
@@ -229,6 +237,10 @@ private fun Header(state: WidgetState) {
                 maxLines = 1,
             )
         }
+        if (roomForShare(state, size, amountSize(size.width, compact = false), 48.dp)) {
+            Spacer(GlanceModifier.width(8.dp))
+            ShareButton(48.dp)
+        }
         if (state.lockEnabled) {
             Spacer(GlanceModifier.width(8.dp))
             EyeButton(state.visible, size = 48.dp)
@@ -270,6 +282,36 @@ private fun EyeButton(visible: Boolean, size: Dp) {
             .padding(size / 4)
             .clickable(action),
     )
+}
+
+/** Sends today's total to WhatsApp. Goes through ShareTotalActivity, which reads the total fresh. */
+@Composable
+private fun ShareButton(size: Dp) {
+    Image(
+        provider = ImageProvider(R.drawable.ic_share),
+        contentDescription = "Share total on WhatsApp",
+        colorFilter = ColorFilter.tint(Ob.accentLight),
+        modifier = GlanceModifier
+            .size(size)
+            .background(Ob.accentContainer)
+            .cornerRadius(size / 2)
+            .padding(size / 4)
+            .clickable(actionStartActivity<ShareTotalActivity>()),
+    )
+}
+
+private fun widgetPadding(size: DpSize): Dp = if (size.height < 110.dp || size.width < 160.dp) 12.dp else 18.dp
+
+/**
+ * The share button only appears when the amount is readable and the total still fits beside the
+ * buttons; on a narrow widget the amount matters more. (The app's own screen always has room.)
+ */
+private fun roomForShare(state: WidgetState, size: DpSize, fontSize: TextUnit, button: Dp): Boolean {
+    if (!state.visible) return false
+    val buttons = if (state.lockEnabled) 2 else 1
+    val inner = size.width - widgetPadding(size) * 2
+    val amountWidth = Money.format(state.total).length * fontSize.value * 0.56f
+    return inner.value >= amountWidth + buttons * (button.value + 8f)
 }
 
 @Composable

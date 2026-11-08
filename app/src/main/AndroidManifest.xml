@@ -13,6 +13,12 @@
         android:name="android.permission.SCHEDULE_EXACT_ALARM"
         android:maxSdkVersion="32" />
 
+    <!-- Lets the share button see whether WhatsApp / WhatsApp Business is installed. -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
@@ -41,6 +47,15 @@
             android:theme="@style/Theme.LookPe.Transparent" />
 
         <!-- The widget's payment dialog: a transparent window that draws its own scrim and card. -->
+        <!-- Behind the widget's share button. -->
+        <activity
+            android:name=".share.ShareTotalActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.LookPe.Transparent" />
+
         <activity
             android:name=".ui.PaymentDialogActivity"
             android:excludeFromRecents="true"

@@ -85,4 +85,36 @@ class WidgetLayoutTest {
         onNode(hasText("ASHA ROY")).assertExists()
         onNode(hasText("₹300")).assertDoesNotExist()
     }
+
+    @Test
+    fun shown_wideWidget_offersShare() = runGlanceAppWidgetUnitTest {
+        setAppWidgetSize(DpSize(320.dp, 80.dp))
+        provideComposable { Content(state(visible = true)) }
+        onNode(hasContentDescription("Share total on WhatsApp")).assertExists()
+    }
+
+    @Test
+    fun hidden_neverOffersShare() = runGlanceAppWidgetUnitTest {
+        setAppWidgetSize(DpSize(320.dp, 80.dp))
+        provideComposable { Content(state()) }
+        onNode(hasContentDescription("Share total on WhatsApp")).assertDoesNotExist()
+    }
+
+    @Test
+    fun shown_narrowWidget_keepsRoomForTheAmount() = runGlanceAppWidgetUnitTest {
+        setAppWidgetSize(DpSize(130.dp, 60.dp))
+        val big = state(lockEnabled = false, visible = true).copy(
+            payments = listOf(Payment(1, "a", 12_345_600, "ASHA ROY", null, 1_000, "")),
+        )
+        provideComposable { Content(big) }
+        onNode(hasText("₹1,23,456")).assertExists()
+        onNode(hasContentDescription("Share total on WhatsApp")).assertDoesNotExist()
+    }
+
+    @Test
+    fun medium_showsShareBesideTotal() = runGlanceAppWidgetUnitTest {
+        setAppWidgetSize(DpSize(320.dp, 160.dp))
+        provideComposable { Content(state(visible = true)) }
+        onNode(hasContentDescription("Share total on WhatsApp")).assertExists()
+    }
 }

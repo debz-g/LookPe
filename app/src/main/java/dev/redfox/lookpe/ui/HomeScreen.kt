@@ -39,6 +39,7 @@ import dev.redfox.lookpe.data.Repository
 import dev.redfox.lookpe.formatTime
 import dev.redfox.lookpe.reveal.RevealState
 import dev.redfox.lookpe.service.PhonePeListenerService
+import dev.redfox.lookpe.share.ShareTotal
 import dev.redfox.lookpe.setup.readSetupStatus
 import dev.redfox.obsidian.components.ActionPillButton
 import dev.redfox.obsidian.components.LargeHeader
@@ -129,6 +130,7 @@ fun HomeScreen(
                     previousLabel = if (day == today) "yesterday" else "the day before",
                     visible = visible,
                     lockEnabled = lockEnabled,
+                    onShare = { ShareTotal.send(context, ShareTotal.message(day, today, payments.sumOf { it.amountPaise })) },
                     onToggle = { if (revealed) scope.launch { RevealState.hide(context) } else onReveal() },
                     modifier = Modifier.revealOnEnter(2),
                 )
@@ -237,6 +239,7 @@ private fun TotalCard(
     previousLabel: String,
     visible: Boolean,
     lockEnabled: Boolean,
+    onShare: () -> Unit,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -245,10 +248,23 @@ private fun TotalCard(
     ObCard(modifier.fillMaxWidth(), contentPadding = PaddingValues(ObSpacing.XL)) {
         Text("TOTAL COLLECTION", style = type.caption, color = colors.textTertiary)
         Spacer(Modifier.height(ObSpacing.S))
-        if (visible) {
-            RollingText(Money.format(total), style = type.numericLarge, color = colors.textPrimary)
-        } else {
-            Text(Money.MASK, style = type.numericLarge, color = colors.textSecondary)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) {
+                if (visible) {
+                    RollingText(Money.format(total), style = type.numericLarge, color = colors.textPrimary)
+                } else {
+                    Text(Money.MASK, style = type.numericLarge, color = colors.textSecondary)
+                }
+            }
+            // Only while amounts are readable: sharing is not a way around the lock.
+            if (visible) {
+                HeaderIconButton(
+                    icon = R.drawable.ic_share,
+                    contentDescription = "Share total on WhatsApp",
+                    onClick = onShare,
+                    tint = colors.accentLight,
+                )
+            }
         }
         Text(
             if (count == 1) "1 payment" else "$count payments",

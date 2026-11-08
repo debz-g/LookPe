@@ -22,6 +22,8 @@ class BackupFormatException(message: String, cause: Throwable? = null) : Excepti
  * "LOOKPE" | version (1 byte) | IV (12 bytes) | AES-256-GCM( gzip( payments ) )
  * ```
  *
+ * Version 2 added each payment's edited / original / deleted fields; version 1 files still import.
+ *
  * The header is authenticated as GCM associated data, so any change to the file is rejected.
  * The key is built into the app ([BackupKey]) rather than the Android Keystore on purpose:
  * Keystore keys are deleted with the app, and the whole point is restoring after a reinstall.
@@ -29,27 +31,29 @@ class BackupFormatException(message: String, cause: Throwable? = null) : Excepti
 object BackupCodec {
     const val EXTENSION = "lookpe"
     private val MAGIC = "LOOKPE".toByteArray(Charsets.US_ASCII)
-    private const val VERSION: Byte = 1
+    private const val VERSION: Byte = 2
+    /** Version 1 predates editing: no edited / original / deleted fields. */
+    private const val V1: Byte = 1
     private const val IV_BYTES = 12
     private const val TAG_BITS = 128
 
-    fun encode(payments: List<Payment>, createdAt: Long): ByteArray {
+    fun encode(payments: List<Payment>, createdAt: Long, version: Byte = VERSION): ByteArray {
         val iv = ByteArray(IV_BYTES).also { SecureRandom().nextBytes(it) }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply {
             init(Cipher.ENCRYPT_MODE, SecretKeySpec(BackupKey.bytes(), "AES"), GCMParameterSpec(TAG_BITS, iv))
-            updateAAD(header())
+            updateAAD(header(version))
         }
-        val sealed = cipher.doFinal(gzip(serialize(payments, createdAt)))
-        return header() + iv + sealed
+        val sealed = cipher.doFinal(gzip(serialize(payments, createdAt, version)))
+        return header(version) + iv + sealed
     }
 
     /** Throws [BackupFormatException] for anything that isn't an intact LookPe backup. */
     fun decode(file: ByteArray): Backup {
-        val header = header()
+        val header = header(file.getOrNull(MAGIC.size) ?: 0)
         if (file.size < header.size + IV_BYTES + TAG_BITS / 8 ||
             !file.copyOfRange(0, MAGIC.size).contentEquals(MAGIC)
         ) throw BackupFormatException("Not a LookPe backup file")
-        if (file[MAGIC.size] != VERSION) {
+        if (file[MAGIC.size] != VERSION && file[MAGIC.size] != V1) {
             throw BackupFormatException("Made by a newer LookPe; update the app first")
         }
         val iv = file.copyOfRange(header.size, header.size + IV_BYTES)
@@ -63,7 +67,7 @@ object BackupCodec {
             throw BackupFormatException("The backup file is damaged or was changed", e)
         }
         return try {
-            deserialize(gunzip(plain))
+            deserialize(gunzip(plain), file[MAGIC.size])
         } catch (e: Exception) {
             throw BackupFormatException("The backup file is damaged", e)
         }
@@ -71,9 +75,9 @@ object BackupCodec {
 
     data class Backup(val createdAt: Long, val payments: List<Payment>)
 
-    private fun header() = MAGIC + VERSION
+    private fun header(version: Byte) = MAGIC + version
 
-    private fun serialize(payments: List<Payment>, createdAt: Long): ByteArray {
+    private fun serialize(payments: List<Payment>, createdAt: Long, version: Byte): ByteArray {
         val bytes = ByteArrayOutputStream()
         DataOutputStream(bytes).use { out ->
             out.writeLong(createdAt)
@@ -85,24 +89,37 @@ object BackupCodec {
                 out.writeNullableUTF(p.txnId)
                 out.writeLong(p.receivedAt)
                 out.writeUTF(p.raw)
+                if (version >= VERSION) {
+                    out.writeBoolean(p.edited)
+                    out.writeBoolean(p.originalAmountPaise != null)
+                    p.originalAmountPaise?.let(out::writeLong)
+                    out.writeNullableUTF(p.originalPayer)
+                    out.writeBoolean(p.deleted)
+                }
             }
         }
         return bytes.toByteArray()
     }
 
-    private fun deserialize(bytes: ByteArray): Backup =
+    private fun deserialize(bytes: ByteArray, version: Byte): Backup =
         DataInputStream(ByteArrayInputStream(bytes)).use { inp ->
             val createdAt = inp.readLong()
             val count = inp.readInt()
             require(count >= 0)
             val payments = List(count) {
-                Payment(
+                val base = Payment(
                     dedupeKey = inp.readUTF(),
                     amountPaise = inp.readLong(),
                     payer = inp.readNullableUTF(),
                     txnId = inp.readNullableUTF(),
                     receivedAt = inp.readLong(),
                     raw = inp.readUTF(),
+                )
+                if (version < VERSION) base else base.copy(
+                    edited = inp.readBoolean(),
+                    originalAmountPaise = if (inp.readBoolean()) inp.readLong() else null,
+                    originalPayer = inp.readNullableUTF(),
+                    deleted = inp.readBoolean(),
                 )
             }
             Backup(createdAt, payments)

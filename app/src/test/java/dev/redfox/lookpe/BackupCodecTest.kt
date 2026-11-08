@@ -24,6 +24,21 @@ class BackupCodecTest {
     }
 
     @Test
+    fun editedAndDeletedFields_roundTrip() {
+        val edited = payments + listOf(
+            payments[0].copy(dedupeKey = "E", amountPaise = 290_00, edited = true, originalAmountPaise = 200, originalPayer = "******1234"),
+            payments[1].copy(dedupeKey = "D", deleted = true),
+        )
+        assertEquals(edited, BackupCodec.decode(BackupCodec.encode(edited, 1)).payments)
+    }
+
+    @Test
+    fun version1Backup_stillImports_withDefaults() {
+        val old = BackupCodec.encode(payments, 7, version = 1)
+        assertEquals(payments, BackupCodec.decode(old).payments)
+    }
+
+    @Test
     fun emptyBackup_roundTrips() {
         assertEquals(emptyList<Payment>(), BackupCodec.decode(BackupCodec.encode(emptyList(), 1)).payments)
     }
@@ -45,7 +60,14 @@ class BackupCodecTest {
     @Test
     fun tamperedHeader_isRejected() {
         val file = BackupCodec.encode(payments, 1)
-        file[6] = 2 // version byte is authenticated
+        file[6] = 1 // the version byte is authenticated, so downgrading it fails too
+        assertThrows(BackupFormatException::class.java) { BackupCodec.decode(file) }
+    }
+
+    @Test
+    fun newerVersion_isRejected() {
+        val file = BackupCodec.encode(payments, 1)
+        file[6] = 3
         assertThrows(BackupFormatException::class.java) { BackupCodec.decode(file) }
     }
 

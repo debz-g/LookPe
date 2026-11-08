@@ -32,11 +32,49 @@ class Repository private constructor(context: Context) {
         return dao.insert(row) != -1L
     }
 
+    /** Every row including deleted ones: for backups. */
     suspend fun allPayments() = dao.all()
 
-    /** Adds payments from a backup; ones already here (same dedupe key) are skipped. Returns how many were new. */
+    /** What the user sees: everything not deleted. */
+    suspend fun activePayments() = dao.active()
+
+    /** Hand-corrects a payment. The first edit remembers what the parser logged. */
+    suspend fun edit(id: Long, amountPaise: Long, payer: String?) {
+        val p = dao.all().firstOrNull { it.id == id } ?: return
+        val originalAmount = p.originalAmountPaise ?: p.amountPaise
+        val originalPayer = if (p.edited) p.originalPayer else p.payer
+        dao.setState(id, amountPaise, payer, true, originalAmount, originalPayer, p.deleted)
+    }
+
+    /** Puts back what the parser logged before the edit. */
+    suspend fun restoreOriginal(id: Long) {
+        val p = dao.all().firstOrNull { it.id == id } ?: return
+        val amount = p.originalAmountPaise ?: return
+        dao.setState(id, amount, p.originalPayer, false, null, null, p.deleted)
+    }
+
+    /** Soft delete: hidden from totals and lists, but the row stays so the same notification isn't logged again. */
+    suspend fun delete(id: Long) {
+        val p = dao.all().firstOrNull { it.id == id } ?: return
+        dao.setState(id, p.amountPaise, p.payer, p.edited, p.originalAmountPaise, p.originalPayer, true)
+    }
+
+    /**
+     * Adds payments from a backup; ones already here (same dedupe key) are skipped, except that an
+     * edit or delete made on the other phone carries over to an untouched copy here. Returns how many were new.
+     */
     suspend fun importPayments(payments: List<Payment>): Int =
-        payments.count { dao.insert(it.copy(id = 0)) != -1L }
+        payments.count { incoming ->
+            if (dao.insert(incoming.copy(id = 0)) != -1L) return@count true
+            val here = dao.byKey(incoming.dedupeKey)
+            if (here != null && !here.edited && !here.deleted && (incoming.edited || incoming.deleted)) {
+                dao.setState(
+                    here.id, incoming.amountPaise, incoming.payer, incoming.edited,
+                    incoming.originalAmountPaise, incoming.originalPayer, incoming.deleted,
+                )
+            }
+            false
+        }
 
     /** Free text matches payer and txn id; a whole number also matches that rupee amount. */
     fun search(query: String): Flow<List<Payment>> {
@@ -87,6 +125,7 @@ class Repository private constructor(context: Context) {
         var fixed = 0
         for (p in dao.all()) {
             val (title, text) = p.raw.split('\n', limit = 2).let { it[0] to it.getOrNull(1) }
+            if (p.edited) continue // fixed by hand: the parser must not undo it
             val parsed = PaymentParser.parse(title, text) ?: continue
             if (parsed.amountPaise != p.amountPaise) {
                 dao.correct(p.id, parsed.amountPaise, parsed.payer ?: p.payer)

@@ -21,6 +21,20 @@ object Money {
         return sign + group(abs / 100) + ".%02d".format(Locale.US, abs % 100)
     }
 
+    /** Reads what someone types into an amount box ("1250", "1,250.5", "₹300") as paise; null if it isn't a sensible amount. */
+    fun parse(text: String): Long? {
+        val clean = text.replace(",", "").replace("₹", "").trim()
+        if (!Regex("""[0-9]+(\.[0-9]{1,2})?""").matches(clean)) return null
+        val paise = java.math.BigDecimal(clean).movePointRight(2).toLong()
+        return paise.takeIf { it in 1..MAX_PAISE }
+    }
+
+    /** ₹1 crore: far beyond a day's takings, so anything bigger is a typing slip. */
+    private const val MAX_PAISE = 1_00_00_000L * 100
+
+    /** The editor's starting value: 1250 or 1250.50, no grouping. */
+    fun editable(paise: Long): String = if (paise % 100 == 0L) (paise / 100).toString() else "%d.%02d".format(Locale.US, paise / 100, paise % 100)
+
     private fun group(rupees: Long): String {
         val digits = rupees.toString()
         if (digits.length <= 3) return digits

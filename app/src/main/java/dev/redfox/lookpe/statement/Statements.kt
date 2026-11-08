@@ -22,7 +22,7 @@ object Statements {
     /** The statement for [period] as of now, built from every saved payment. */
     suspend fun build(context: Context, period: StatementPeriod): Statement = withContext(Dispatchers.IO) {
         val zone = ZoneId.systemDefault()
-        val payments = Repository.get(context).allPayments()
+        val payments = Repository.get(context).activePayments()
         val first = payments.minOfOrNull { it.receivedAt }?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
         val (from, to) = period.range(LocalDate.now(zone), first)
         Statement.build(payments, from, to, System.currentTimeMillis(), zone)

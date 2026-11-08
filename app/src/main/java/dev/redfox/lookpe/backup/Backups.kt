@@ -89,7 +89,9 @@ object Backups {
      */
     suspend fun backUpNow(context: Context, onlyIfChanged: Boolean): String? = withContext(Dispatchers.IO) {
         val payments = Repository.get(context).allPayments()
-        val fingerprint = "${payments.size}|${payments.maxOfOrNull { it.receivedAt } ?: 0}"
+        // Edits and deletes change no count or time, so they go into the fingerprint too.
+        val fingerprint = "${payments.size}|${payments.maxOfOrNull { it.receivedAt } ?: 0}|" +
+            "${payments.sumOf { it.amountPaise }}|${payments.count { it.edited }}|${payments.count { it.deleted }}"
         val p = prefs(context)
         if (payments.isEmpty() || (onlyIfChanged && p.getString(KEY_FINGERPRINT, null) == fingerprint)) {
             return@withContext null

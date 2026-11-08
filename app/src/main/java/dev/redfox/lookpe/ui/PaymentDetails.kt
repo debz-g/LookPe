@@ -12,7 +12,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.fragment.app.FragmentActivity
+import dev.redfox.lookpe.data.Repository
+import dev.redfox.lookpe.data.refreshWidgets
+import dev.redfox.lookpe.reveal.askForBiometric
+import dev.redfox.obsidian.components.ActionPillButton
+import dev.redfox.obsidian.components.ObTextField
+import dev.redfox.obsidian.components.PillButton
+import kotlinx.coroutines.launch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -84,15 +100,142 @@ fun PaymentsCard(
     }
 }
 
-/** Everything about one payment, with the txn id ready to copy for a customer who says "I paid". */
+private enum class SheetMode { View, Edit, ConfirmDelete }
+
+/**
+ * Everything about one payment, with the txn id ready to copy for a customer who says "I paid".
+ * Also where a payment is corrected or deleted, in case PhonePe sends something the parser misreads.
+ * Saving, restoring and deleting all need the same fingerprint / PIN check as showing amounts.
+ */
 @Composable
 fun PaymentDetailsSheet(p: Payment, visible: Boolean, onDismiss: () -> Unit) {
-    ObSheet(onDismiss = onDismiss, title = "Payment") {
-        PaymentDetailsBody(
-            p = p,
-            visible = visible,
-            modifier = Modifier.padding(horizontal = ObSpacing.Gutter).padding(bottom = ObSpacing.XL),
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val colors = ObsidianTheme.colors
+    var mode by remember { mutableStateOf(SheetMode.View) }
+
+    /** Runs [action] after the biometric check, then closes the sheet. */
+    fun confirmed(title: String, subtitle: String, action: suspend (Repository) -> Unit) {
+        val activity = context as? FragmentActivity ?: return
+        activity.askForBiometric(
+            onSuccess = {
+                scope.launch {
+                    action(Repository.get(context))
+                    refreshWidgets(context)
+                    onDismiss()
+                }
+            },
+            onFail = {},
+            title = title,
+            subtitle = subtitle,
         )
+    }
+
+    ObSheet(onDismiss = onDismiss, title = if (mode == SheetMode.Edit) "Edit payment" else "Payment") {
+        val pad = Modifier.padding(horizontal = ObSpacing.Gutter).padding(bottom = ObSpacing.XL)
+        when (mode) {
+            SheetMode.View -> Column(pad) {
+                PaymentDetailsBody(p = p, visible = visible)
+                if (visible) {
+                    Spacer(Modifier.height(ObSpacing.L))
+                    Row(horizontalArrangement = Arrangement.spacedBy(ObSpacing.S)) {
+                        PillButton(
+                            text = "Edit",
+                            onClick = { mode = SheetMode.Edit },
+                            contentColor = colors.accentLight,
+                            containerColor = colors.accentContainer,
+                        )
+                        if (p.edited && p.originalAmountPaise != null) {
+                            PillButton(
+                                text = "Restore original",
+                                onClick = {
+                                    confirmed("Restore original", "Back to what PhonePe sent") { it.restoreOriginal(p.id) }
+                                },
+                            )
+                        }
+                        PillButton(text = "Delete", onClick = { mode = SheetMode.ConfirmDelete }, contentColor = colors.error)
+                    }
+                }
+            }
+            SheetMode.Edit -> EditForm(
+                p = p,
+                modifier = pad,
+                onCancel = { mode = SheetMode.View },
+                onSave = { paise, payer ->
+                    confirmed("Save changes", "Confirm it's you to change this payment") { it.edit(p.id, paise, payer) }
+                },
+            )
+            SheetMode.ConfirmDelete -> Column(pad) {
+                Text("Delete this payment?", style = ObsidianTheme.typography.title, color = colors.textPrimary)
+                Text(
+                    "${Money.format(p.amountPaise)} from ${p.payer ?: "unknown payer"} will no longer count in totals, " +
+                        "history or statements.",
+                    style = ObsidianTheme.typography.body,
+                    color = colors.textSecondary,
+                )
+                Spacer(Modifier.height(ObSpacing.L))
+                Row(horizontalArrangement = Arrangement.spacedBy(ObSpacing.S)) {
+                    PillButton(text = "Keep it", onClick = { mode = SheetMode.View })
+                    PillButton(
+                        text = "Delete",
+                        onClick = { confirmed("Delete payment", "Confirm it's you to delete this payment") { it.delete(p.id) } },
+                        contentColor = colors.error,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditForm(p: Payment, onCancel: () -> Unit, onSave: (paise: Long, payer: String?) -> Unit, modifier: Modifier = Modifier) {
+    val colors = ObsidianTheme.colors
+    val type = ObsidianTheme.typography
+    var amount by remember { mutableStateOf(Money.editable(p.amountPaise)) }
+    var payer by remember { mutableStateOf(p.payer.orEmpty()) }
+    val paise = Money.parse(amount)
+    val newPayer = payer.trim().ifEmpty { null }
+    val changed = paise != p.amountPaise || newPayer != p.payer
+
+    Column(modifier) {
+        Text(
+            "Use this only if LookPe logged a payment wrongly. The original notification is kept below.",
+            style = type.body,
+            color = colors.textSecondary,
+        )
+        Spacer(Modifier.height(ObSpacing.L))
+        ObTextField(
+            value = amount,
+            onValueChange = { amount = it },
+            label = "Amount (₹)",
+            isError = paise == null,
+            supportingText = if (paise == null) "Enter an amount like 250 or 250.50" else null,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(ObSpacing.M))
+        ObTextField(
+            value = payer,
+            onValueChange = { payer = it },
+            label = "From",
+            placeholder = "Not in the notification",
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(ObSpacing.M))
+        Text("Original notification", style = type.label, color = colors.textSecondary)
+        Text(p.raw.replace('\n', ' '), style = type.body, color = colors.textTertiary)
+        Spacer(Modifier.height(ObSpacing.L))
+        Row(horizontalArrangement = Arrangement.spacedBy(ObSpacing.S), verticalAlignment = Alignment.CenterVertically) {
+            ActionPillButton(
+                text = "Save",
+                onClick = { if (paise != null) onSave(paise, newPayer) },
+                primary = true,
+                enabled = paise != null && changed,
+            )
+            PillButton(text = "Cancel", onClick = onCancel)
+        }
+        Spacer(Modifier.height(ObSpacing.S))
+        Text("Saving asks for your fingerprint or PIN.", style = type.body, color = colors.textTertiary)
     }
 }
 
@@ -139,6 +282,13 @@ fun PaymentDetailsBody(p: Payment, visible: Boolean, modifier: Modifier = Modifi
             style = type.numericLarge,
             color = if (visible) colors.textPrimary else colors.textSecondary,
         )
+        if (visible && p.edited) {
+            Text(
+                "Edited" + (p.originalAmountPaise?.let { " · was ${Money.format(it)}" } ?: ""),
+                style = type.body,
+                color = colors.warning,
+            )
+        }
         Spacer(Modifier.height(ObSpacing.L))
         ObCard(Modifier.fillMaxWidth(), color = colors.cardInner) {
             Detail("From", p.payer ?: "Not in the notification")

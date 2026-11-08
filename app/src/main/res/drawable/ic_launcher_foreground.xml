@@ -1,14 +1,29 @@
-<!-- Rupee symbol on the adaptive icon's safe zone. -->
+<!-- Shop awning over a rupee, dark on the emerald launcher background. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Drawn on a 130-unit grid, then scaled into the adaptive icon's 66dp safe zone and centred. -->
     <group
-        android:translateX="30"
-        android:translateY="30">
+        android:scaleX="0.56"
+        android:scaleY="0.56"
+        android:translateX="-256.8"
+        android:translateY="-0.6">
         <path
-            android:fillColor="@color/ob_accent"
-            android:pathData="M10,6h28v4.5h-8.6c1.5,1.6 2.5,3.6 2.9,5.9h5.7v4.5h-5.7c-0.9,6 -5.6,10.1 -12.4,10.6L30.8,44h-6.2L13.4,31.6v-3.9h4.4c4.3,0 7.4,-2.4 8.2,-6.8H10v-4.5h15.6c-0.9,-3.4 -3.9,-5.9 -8.2,-5.9H10V6z" />
+            android:fillColor="@color/window_background"
+            android:pathData="M510,50h18v34h-18zM510,84a9,9 0 0 0 18,0zM546,50h18v34h-18zM546,84a9,9 0 0 0 18,0zM582,50h18v34h-18zM582,84a9,9 0 0 0 18,0z" />
+        <path
+            android:fillColor="@color/ic_launcher_stripe"
+            android:pathData="M528,50h18v34h-18zM528,84a9,9 0 0 0 18,0zM564,50h18v34h-18zM564,84a9,9 0 0 0 18,0z" />
+        <group
+            android:scaleX="1.0"
+            android:scaleY="1.0"
+            android:translateX="531"
+            android:translateY="101">
+            <path
+                android:fillColor="@color/window_background"
+                android:pathData="M10,6h28v4.5h-8.6c1.5,1.6 2.5,3.6 2.9,5.9h5.7v4.5h-5.7c-0.9,6 -5.6,10.1 -12.4,10.6L30.8,44h-6.2L13.4,31.6v-3.9h4.4c4.3,0 7.4,-2.4 8.2,-6.8H10v-4.5h15.6c-0.9,-3.4 -3.9,-5.9 -8.2,-5.9H10V6z" />
+        </group>
     </group>
 </vector>

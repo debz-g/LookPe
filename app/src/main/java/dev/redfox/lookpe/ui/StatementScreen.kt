@@ -1,6 +1,7 @@
 package dev.redfox.lookpe.ui
 
 import android.content.ActivityNotFoundException
+import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
@@ -113,6 +114,17 @@ fun StatementScreen(onBack: () -> Unit, requireUnlock: (onUnlocked: () -> Unit) 
         }
     }
 
+    fun share(uri: Uri) {
+        val send = Intent(Intent.ACTION_SEND)
+            .setType(Statements.MIME)
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .putExtra(Intent.EXTRA_SUBJECT, "LookPe payment statement")
+            .putExtra(Intent.EXTRA_TITLE, "LookPe payment statement")
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        send.clipData = ClipData.newRawUri("LookPe statement", uri) // lets the chooser and the target read the file
+        context.startActivity(Intent.createChooser(send, "Share statement"))
+    }
+
     DetailPage(title = "Statement", onBack = onBack) { padding ->
         Box(Modifier.fillMaxSize()) {
             LazyColumn(
@@ -176,6 +188,12 @@ fun StatementScreen(onBack: () -> Unit, requireUnlock: (onUnlocked: () -> Unit) 
                                         enabled = !saving,
                                     )
                                     savedUri?.let { uri ->
+                                        PillButton(
+                                            text = "Share",
+                                            onClick = { share(uri) },
+                                            contentColor = colors.accentLight,
+                                            containerColor = colors.accentContainer,
+                                        )
                                         PillButton(
                                             text = "Open",
                                             onClick = { open(uri) },

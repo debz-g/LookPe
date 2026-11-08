@@ -61,6 +61,25 @@ class StatementTest {
     }
 
     @Test
+    fun customers_areRankedByTotal_matchingNamesLoosely_andSkippingUnnamed() {
+        val ps = listOf(
+            pay(1, at("2026-11-01", "10:00"), 10000, "ASHA ROY"),
+            pay(2, at("2026-11-02", "10:00"), 25000, "asha  roy "),
+            pay(3, at("2026-11-02", "11:00"), 30000, "Bob"),
+            pay(4, at("2026-11-03", "11:00"), 500, null),
+            pay(5, at("2026-11-03", "12:00"), 700, "  "),
+            pay(6, at("2026-11-04", "12:00"), 30000, "Carl"),
+        )
+        val st = Statement.build(ps, LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 8), 0, zone)
+        // Bob and Carl tie on ₹300 and one payment each, so the name decides.
+        assertEquals(listOf("asha roy", "Bob", "Carl"), st.customers.map { it.name })
+        assertEquals(35000L, st.customers[0].totalPaise)
+        assertEquals(2, st.customers[0].count)
+        assertEquals(at("2026-11-02", "10:00"), st.customers[0].lastAt)
+        assertEquals(2, st.unnamedCount)
+    }
+
+    @Test
     fun periods() {
         val today = LocalDate.of(2026, 3, 15)
         assertEquals(LocalDate.of(2026, 3, 1) to today, StatementPeriod.ThisMonth.range(today, null))

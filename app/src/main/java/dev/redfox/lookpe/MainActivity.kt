@@ -29,6 +29,7 @@ import dev.redfox.lookpe.service.ListenerHealth
 import kotlinx.coroutines.Dispatchers
 import dev.redfox.lookpe.reveal.RevealState
 import dev.redfox.lookpe.reveal.askForBiometric
+import dev.redfox.lookpe.ui.CustomersScreen
 import dev.redfox.lookpe.ui.HomeScreen
 import dev.redfox.lookpe.ui.HistoryScreen
 import dev.redfox.lookpe.ui.SearchScreen
@@ -115,8 +116,10 @@ class MainActivity : FragmentActivity() {
                         onBack = back,
                         onOpenDay = { dayEpoch = it.toEpochDay(); back() },
                         onOpenStatement = { push(Screen.Statement) },
+                        onOpenCustomers = { push(Screen.Customers) },
                     )
                     Screen.Skipped -> SkippedScreen(onBack = back)
+                    Screen.Customers -> CustomersScreen(onBack = back)
                     Screen.Statement -> StatementScreen(onBack = back, requireUnlock = ::requireUnlock)
                 }
             }
@@ -156,7 +159,7 @@ class MainActivity : FragmentActivity() {
     }
 }
 
-private enum class Screen { Home, Settings, Search, History, Skipped, Statement }
+private enum class Screen { Home, Settings, Search, History, Skipped, Statement, Customers }
 
 private val ScreenStackSaver = listSaver<List<Screen>, String>(
     save = { stack -> stack.map { it.name } },

@@ -64,7 +64,7 @@ private val shortDay = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH)
 
 /** Month calendar with each day's total, the month total, and week by week. Tapping a day opens it. */
 @Composable
-fun HistoryScreen(onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit, onOpenStatement: () -> Unit) {
+fun HistoryScreen(onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit, onOpenStatement: () -> Unit, onOpenCustomers: () -> Unit) {
     val context = LocalContext.current
     val repo = remember { Repository.get(context) }
     val thisMonth = YearMonth.now()
@@ -153,14 +153,16 @@ fun HistoryScreen(onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit, onOpenStat
                         icon = R.drawable.ic_download,
                         titleStyleLarge = true,
                         onClick = onOpenStatement,
-                        trailing = {
-                            Icon(
-                                painterResource(R.drawable.ic_chevron_right),
-                                contentDescription = null,
-                                tint = colors.textTertiary,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        },
+                        trailing = { Chevron() },
+                    )
+                    ObDivider(Modifier.padding(vertical = ObSpacing.M))
+                    ObListRow(
+                        title = "Top customers",
+                        subtitle = "Who paid the most",
+                        icon = R.drawable.ic_person,
+                        titleStyleLarge = true,
+                        onClick = onOpenCustomers,
+                        trailing = { Chevron() },
                     )
                 }
             }
@@ -190,6 +192,16 @@ fun HistoryScreen(onBack: () -> Unit, onOpenDay: (LocalDate) -> Unit, onOpenStat
             }
         }
     }
+}
+
+@Composable
+private fun Chevron() {
+    Icon(
+        painterResource(R.drawable.ic_chevron_right),
+        contentDescription = null,
+        tint = ObsidianTheme.colors.textTertiary,
+        modifier = Modifier.size(20.dp),
+    )
 }
 
 @Composable

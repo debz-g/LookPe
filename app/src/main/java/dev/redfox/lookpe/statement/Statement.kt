@@ -28,6 +28,9 @@ data class StatementRow(
     val runningPaise: Long,
 )
 
+/** One payer's payments in a period, for the Top customers list. */
+data class Customer(val name: String, val count: Int, val totalPaise: Long, val lastAt: Long)
+
 data class StatementDay(val date: LocalDate, val count: Int, val totalPaise: Long)
 
 /** Everything the PDF prints, worked out up front so it can be tested without drawing anything. */
@@ -44,6 +47,23 @@ data class Statement(
     val averagePaise get() = if (rows.isEmpty()) 0L else totalPaise / rows.size
     val highest get() = rows.maxByOrNull { it.amountPaise }
     val bestDay get() = days.maxByOrNull { it.totalPaise }
+
+    /**
+     * Payers ranked by what they paid, biggest first. Names are matched ignoring case and spacing, so
+     * "ASHA ROY" and "Asha Roy " are one customer. Payments with no payer name are left out; see [unnamedCount].
+     */
+    val customers: List<Customer> by lazy {
+        fun tidy(name: String) = name.trim().replace(Regex("\\s+"), " ")
+        rows.filter { !it.payer.isNullOrBlank() }
+            .groupBy { tidy(it.payer!!).lowercase() }
+            .map { (_, ps) ->
+                val newest = ps.maxBy { it.at }
+                Customer(tidy(newest.payer!!), ps.size, ps.sumOf { it.amountPaise }, newest.at)
+            }
+            .sortedWith(compareByDescending<Customer> { it.totalPaise }.thenByDescending { it.count }.thenBy { it.name })
+    }
+
+    val unnamedCount get() = rows.count { it.payer.isNullOrBlank() }
 
     companion object {
         fun build(payments: List<Payment>, from: LocalDate, to: LocalDate, generatedAt: Long, zone: ZoneId): Statement {
